@@ -1,24 +1,32 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.btn {
+  @apply rounded-lg py-2 px-3 text-white bg-violet-600   hover:bg-violet-900 disabled:bg-gray-400
+}
+
+.btn-wide {
+  @apply rounded-lg py-4 px-50 text-white text-xl bg-violet-600   hover:bg-violet-900 disabled:bg-gray-400
+}
+
+.btn-fat {
+  @apply rounded-lg py-4 px-5 text-white text-xl bg-violet-600   hover:bg-violet-900 disabled:bg-gray-400
+}
+
+.input-field {
+  @apply bg-gray-50 border border-gray-300 text-gray-900 text-xl rounded-lg focus:outline-none focus:ring focus:ring-violet-600 focus:border-violet-600 block px-15
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Override RSuite tooltip variables globally */
+  --rs-tooltip-bg: #8b5cf6 !important; /* violet-500 for tooltip background */
+  --rs-tooltip-text: white !important; /* white text */
+  --rs-progress-bg: var(--rs-gray-200) !important;
+  --rs-progress-bar: #8b5cf6 !important;
+  --rs-slider-bar: var(--rs-gray-100) !important;
+  --rs-slider-hover-bar: var(--rs-gray-200) !important;
+  --rs-slider-thumb-border: #8b5cf6 !important;
+  --rs-slider-thumb-bg: #fff !important;
+  --rs-slider-thumb-hover-shadow: 0 0 0 8px rgb(from var(--rs-gray-500) r g b / 25%) !important;
+  --rs-slider-progress: #8b5cf6 !important;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-}
