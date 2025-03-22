@@ -3,8 +3,9 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const cors = require("cors");
+const cors = require("cors"); 
 const utils = require("./lib/utils.js");
+const mapUtils = require("./lib/maps.js");
 
 const app = express();
 const server = http.createServer(app);
@@ -34,6 +35,7 @@ io.on("connection", (socket) => {
             roomState: 0, //0 = not started, 1 = in progress, 2 = finished
             questionNum: 0,
             restrictions: Array(4).fill(false),
+            location: {},
             clientInput: [
                 /*
                 [], //foodTypeWant
@@ -47,6 +49,17 @@ io.on("connection", (socket) => {
                 {}, // PriceRange
                 
             ],
+            restaurants: [],
+            /*restaurants: [
+                {cuisine: numOfRestos},
+                radius,
+                priceLevel
+            ]
+            */
+
+            restoData: [],
+            restoVotes: [],
+
         };
         rooms[roomCode].clientState[socket.id] = 0
         roomsMap[socket.id] = roomCode;
@@ -74,8 +87,11 @@ io.on("connection", (socket) => {
         }
     });
 
-    socket.on("readyBegin", (roomCode) => {
+    socket.on("readyBegin", (roomCode, currentLocation, restrictions) => {
+
         rooms[roomCode].roomState = 1;
+        rooms[roomCode].location = currentLocation;
+        rooms[roomCode]["restrictions"] = restrictions;
         console.log("Host ready to begin room:", roomCode);
         io.to(roomCode).emit("begin");
     });
@@ -106,8 +122,76 @@ io.on("connection", (socket) => {
                 console.log(rooms[roomCode].clientInput);
                 rooms[roomCode].restaurants = utils.processData(rooms[roomCode].clientInput, rooms[roomCode].users.length);
             }
-            
         }
+    });
+
+    socket.on("loadedResultsPage", async (clientID, roomCode) => {
+        rooms[roomCode].clientState[clientID] = 1;
+        console.log('client ', clientID, ' has loaded results page');
+        console.log('current client state obj: ', rooms[roomCode].clientState);
+
+        if (Object.values(rooms[roomCode].clientState).every(state => state === 1)) {
+            try {
+              const rawRestoData = [];
+              const promises = [];
+              
+              for (const foodType of Object.keys(rooms[roomCode].restaurants[0])) {
+                const numRestaurants = rooms[roomCode].restaurants[0][foodType];
+                promises.push(
+                  mapUtils.fetchMapsData(foodType, rooms[roomCode].location.lat, rooms[roomCode].location.lng, 
+                                     rooms[roomCode].restaurants[1], rooms[roomCode].restaurants[2], numRestaurants)
+                  .then(results => {
+                    console.log(`Found ${results.length} restaurants for ${foodType}`);
+                    if (results.length > 0) {
+                      rawRestoData.push(...results);
+                    }
+                    return results;
+                  })
+                );
+              }
+              
+              await Promise.all(promises);
+              rooms[roomCode].restoData = rawRestoData;
+              
+              if (rawRestoData.length > 0) {
+                io.to(roomCode).emit("restoQuery", rawRestoData);
+              } else {
+                // Fallback if no restaurants found
+                io.to(roomCode).emit("noRestaurantsFound");
+              }
+            } catch (error) {
+              console.error("Error fetching restaurant data:", error);
+              io.to(roomCode).emit("error", "Failed to fetch restaurants");
+            }
+          }
+        });
+
+    socket.on("submitVote", (clientID, roomCode, restoNum) => {
+        rooms[roomCode].clientState[clientID] = 1;
+
+        console.log('vote submitted by ', clientID);
+        console.log('current client state obj: ', rooms[roomCode].clientState);
+
+        if (rooms[roomCode].restoVotes[restoNum]) {
+            rooms[roomCode].restoVotes[restoNum]++;
+        }
+        else {
+            rooms[roomCode].restoVotes[restoNum] = 1;
+        }
+
+
+        if (Object.values(rooms[roomCode].clientState).every(state => state === 1)) {
+            console.log('all clients have submitted their votes: ', rooms[roomCode].restoVotes);
+            for(var key in rooms[roomCode].clientState) {
+                rooms[roomCode].clientState[key] = 0;
+            }
+
+            newRestos = utils.processVotes(rooms[roomCode].restoData, rooms[roomCode].restoVotes);
+            io.to(roomCode).emit("newVote", newRestos);
+            rooms[roomCode].restoVotes = [];
+
+        }
+
     });
 
     socket.on("checkRoom", (roomCode, callback) => {
@@ -135,7 +219,7 @@ io.on("connection", (socket) => {
 
             console.log('starting user disconnect cleanup')
 
-            delete rooms[userRoom].clientState.userSocket;
+            delete rooms[userRoom].clientState[socket.id];
 
             if (rooms[userRoom].roomState === 1) {
                 for (let i = 0; i < rooms[userRoom].clientInput.length; i++) {
@@ -144,7 +228,7 @@ io.on("connection", (socket) => {
             }
         }
 
-        delete roomsMap.userSocket;
+        delete roomsMap[socket.id];
 
         for (const [roomCode, room] of Object.entries(rooms)) {
             if (room.host === socket.id) { // close room on host disconnect

@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import { join } from 'path';
 import SelectButton from '../ui/SelectButton'
 import Restrictions from '../ui/Restrictions'
+import AddressSelector from '../ui/AddressSelector'
 
 
 
@@ -22,6 +23,8 @@ export default function HostPage() {
   const [users, setUsers] = useState([]);
   const [ready, setReady] = useState(false);
   const [restrictions, setRestrictions] = useState(Array(4).fill(false))
+  const [currentLocation, setCurrentLocation] = useState({lat: 0, lng: 0});
+  const [autoLocation, setAutoLocation] = useState(true);
 
 
   useEffect(() => {
@@ -92,9 +95,33 @@ export default function HostPage() {
   
   }, [socket, roomCode, router]); // Add roomCode and router to the dependencies
 
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(locationSuccess, locationError);
+    } else {
+      setAutoLocation(false);
+    }
+    
+    function locationSuccess(position) {
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+      setCurrentLocation({lat: latitude, lng: longitude});
+    }
+  
+    function locationError() {
+      console.log("Unable to retrieve your location");
+      setAutoLocation(false);
+    }
+  }, []);
+
   function notifyReady() {
-    console.log("notifyReady triggered with roomCode:", roomCode);
-    socket.emit("readyBegin", roomCode);
+    if (currentLocation && (currentLocation.lat >= -90 &&  currentLocation.lat <= 90) && (currentLocation.lng >= -180 && currentLocation.lng <= 180)) {
+      console.log("notifyReady triggered with roomCode:", roomCode);
+      socket.emit("readyBegin", roomCode, currentLocation, restrictions);
+    }
+    else {
+      alert("Please enter a valid address")
+    }
   }
 
   return (
@@ -121,6 +148,10 @@ export default function HostPage() {
       <div className='content-center justify-self-center py-4'>
         <button onClick={notifyReady} disabled={!roomCode || ready} className="btn-wide">Ready</button>
       </div>
+
+      {!autoLocation && (
+        <AddressSelector coordinates={currentLocation} setCoordinates={setCurrentLocation} />
+      )}
 
       <Restrictions restrictions={restrictions} setRestrictions={setRestrictions} />
     </div>

@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSocket } from "../context/SocketContext";
 import { useState, useEffect } from "react";
-import { Slider, RangeSlider } from 'rsuite';
+import { Slider, Loader } from 'rsuite';
 import FoodSelector from '../ui/FoodSelector';
 //import 'rsuite/Slider/styles/index.css';
 //import 'rsuite/RangeSlider/styles/index.css';
@@ -192,7 +192,7 @@ export default function QuestionnairePage() {
       case 2: 
         return(
           <div className='content-center justify-self-center justify-items-center py-4'>
-            <h1 className='text-violet-500 text-xl'>How far?</h1>
+            <h1 className='text-violet-500 text-xl'>How far (in meters)?</h1>
             <div className='py-4'>
               <form className="flex flex-row gap-5" onSubmit={(e) => {
                 e.preventDefault();
@@ -202,14 +202,12 @@ export default function QuestionnairePage() {
                   <Slider 
                   value={distance}
                   onChange={setDistance}
-                  min={5} 
-                  max={90} 
-                  step={5} 
+                  min={100} 
+                  max={20000} 
+                  step={50} 
                   style={{ width: 400 }}
-                  graduated 
-                  progress 
                   tooltip
-                  renderTooltip={(value) => value + ' mins'}
+                  renderTooltip={(value) => (value >= 1000) ? value/1000 + ' km': value + ' m'}
                   //barClassName="custom-slider-bar"
                   //handleClassName="custom-slider-handle"
                   handleStyle={{
@@ -263,14 +261,18 @@ export default function QuestionnairePage() {
       case 4:
         return(
           <div>
-            <button onClick={submitAnswer} className="btn">Submit</button>
           </div>
         );
       
       case -1:
         return(
           <div className="content-center justify-self-center justify-items-center py-4">
-            <h1 className='text-violet-500 text-3xl'>Waiting for all clients to submit</h1>
+            <div>
+              <h1 className='text-violet-500 text-3xl'>Waiting for all clients to submit</h1>
+            </div>
+            <div>
+              <Loader size='lg' />
+            </div>
           </div>
         );
       

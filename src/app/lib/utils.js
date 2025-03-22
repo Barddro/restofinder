@@ -1,4 +1,33 @@
+const { Newspaper } = require('lucide-react');
 const foodMap = require('../../public/foodMap.json');
+
+function processVotes(restos, votesArr) {
+    maxVotesIndices = getMaxIndices(votesArr);
+    bestRestos = []
+    for (var i = 0; i < maxVotesIndices.length; i++) {
+        bestRestos.push(restos[maxVotesIndices[i]]);
+        bestRestos[i].id = i;
+    }
+
+    return bestRestos;
+}
+
+function getMaxIndices(arr) {
+    const max = Math.max(...arr);
+    
+    const indices = [];
+    arr.forEach((value, index) => {
+      if (value === max) {
+        indices.push(index);
+      }
+    });
+    
+    return indices;
+  }
+
+function processRawRestoData() {
+
+}
 
 
 function processData(clientInput, numOfClients) {
@@ -9,7 +38,7 @@ function processData(clientInput, numOfClients) {
     clientInputCompiled = [];
 
     clientInputCompiled.push(processRestoNums(numOfClients, clientInput[0], clientInput[1]));
-    clientInputCompiled.push(average(clientInput[2]));
+    clientInputCompiled.push(averageRemoveOutliers(clientInput[2]));
     clientInputCompiled.push(average(clientInput[3]));
 
     console.log(clientInputCompiled)
@@ -128,7 +157,7 @@ function getBestFoodTypeWant(foodTypeWantInput, foodTypeDontWantInput) {
             tempFoodTypeWant[key] -= 2;
         }
         else if (tempFoodTypeWant[key]!== undefined && tempFoodTypeWant[key] < 2) {
-            delete tempFoodTypeWant.key;
+            delete tempFoodTypeWant[key];
         }
     }
 
@@ -152,7 +181,7 @@ function devolveObj(object) {
     let devolvedFoodTypeWant = {};
 
     for (var foodType in object) {
-        if (object[foodType] <= 2) {
+        if (object[foodType] <= 3) {
             devolvedFoodType = devolve(foodType);
             devolvedFoodTypeWant[devolvedFoodType] = (devolvedFoodTypeWant[devolvedFoodType] || 0) + object[foodType];
         } else {
@@ -231,6 +260,26 @@ function average(array) {
     return Math.round(sum / array.length)
 }
 
+function averageRemoveOutliers(array) {
+    newArray = [...array];
+
+    [mean, standardDev] = getStandardDeviation(array);
+
+    for (let i = 0; i < newArray.length; i++) {
+        if (newArray[i] > mean + 2*standardDev || newArray[i] < mean - 2*standardDev) {
+            newArray.splice(i, i);
+        }
+    }
+
+    return average(newArray);
+}
+
+function getStandardDeviation (array) {
+    const n = array.length
+    const mean = array.reduce((a, b) => a + b) / n
+    return [mean, Math.sqrt(array.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b) / n)]
+  }
+
 module.exports = {
     processData,
     processRestoNums,
@@ -241,5 +290,8 @@ module.exports = {
     devolveUseAPI,
     findKey,
     average,
+    averageRemoveOutliers,
     formatClientInput,
+    getMaxIndices,
+    processVotes,
 };
