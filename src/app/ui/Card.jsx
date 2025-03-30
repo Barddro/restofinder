@@ -4,7 +4,9 @@ const Card = ({name, photo, priceLevel, rating, numOfRatings, address, vote, car
     console.log("photo: ", photo);
     
     const pricearr = ['$','$$','$$$','$$$$', '$$$$$']
-    
+    const ratingarr = ['☆☆☆☆☆','★☆☆☆☆','★★☆☆☆','★★★☆☆','★★★★☆', '★★★★★']
+
+    /*
     const ratingstr = (rating) => {
         let ratingstars = "";
         const ratinground = Math.round(rating); 
@@ -18,11 +20,12 @@ const Card = ({name, photo, priceLevel, rating, numOfRatings, address, vote, car
         } 
         return ratingstars;
     }
+    */
 
     return(
         <div>
             <div className='py-5 px-5 rounded-2xl border-2 border-gray-300 shadow w-fit'>
-                <p className='text-2xl py-2 font-bold'>{name}</p>
+                <p className='text-2xl font-bold'>{name}</p>
                 <div className='py-2 px-2'>
                     <img src={photo} className='object-cover w-xl h-auto rounded-lg'></img>
                 </div>
@@ -34,7 +37,7 @@ const Card = ({name, photo, priceLevel, rating, numOfRatings, address, vote, car
                 
                 <div className='flex-auto'>
                     <p>Price: {pricearr[priceLevel]}</p>
-                    <p> Rating: {ratingstr(rating)} ({numOfRatings})</p>
+                    <p> Rating: {ratingarr[Math.round(rating)]} ({numOfRatings})</p>
                 </div>
 
                 {isVoting && <button className='btn' onClick={() => vote(cardNum)}>Vote</button>}

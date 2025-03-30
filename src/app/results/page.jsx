@@ -81,10 +81,10 @@ export default function QuestionnairePage() {
       );
       case 1:
         return (
-          <div className='py-3'>
+          <div className='py-3 content-center justify-self-center'>
             {restaurants && restaurants.length > 0 ? (
               restaurants.map((resto, index) => {
-                const uniqueKey = resto.place_id || resto.id || `restaurant-${index}`;
+                const uniqueKey = resto.place_id;
                 
                 return (
                   <div key={uniqueKey}>
@@ -98,7 +98,7 @@ export default function QuestionnairePage() {
                       address={resto.vicinity}
                       isVoting={true}
                       //onVote={() => vote(uniqueKey)}
-                      vote={() => vote(uniqueKey)}
+                      vote={() => vote(resto.id)}
                     />
                   </div>
                 );
@@ -130,7 +130,7 @@ export default function QuestionnairePage() {
             <Card 
               cardNum={winningResto.place_id || winningResto.id}
               name={winningResto.name}
-              photo={winningResto.photos && winningResto.photos[0] ? winningResto.photos[0].photo_reference : null}
+              photo={winningResto.photoUrl}
               priceLevel={winningResto.price_level}
               rating={winningResto.rating}
               numOfRatings={winningResto.user_ratings_total}
@@ -138,6 +138,8 @@ export default function QuestionnairePage() {
               isVoting={false}
             />
           )}
+
+
         </div>
       );
     default:

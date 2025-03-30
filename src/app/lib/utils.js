@@ -100,7 +100,7 @@ function processRestoNums(numOfClients, foodTypeWantInput, foodTypeDontWantInput
 
     for (var key in allocations) {
         if (allocations[key] === 0) {
-            delete allocations.key;
+            delete allocations[key];
         }
     }
 

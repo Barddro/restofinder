@@ -90,6 +90,7 @@ io.on("connection", (socket) => {
     socket.on("readyBegin", (roomCode, currentLocation, restrictions) => {
 
         rooms[roomCode].roomState = 1;
+        console.log('Host location:', currentLocation); // Add this line
         rooms[roomCode].location = currentLocation;
         rooms[roomCode]["restrictions"] = restrictions;
         console.log("Host ready to begin room:", roomCode);
@@ -131,6 +132,11 @@ io.on("connection", (socket) => {
         console.log('current client state obj: ', rooms[roomCode].clientState);
 
         if (Object.values(rooms[roomCode].clientState).every(state => state === 1)) {
+            console.log('all clients have loaded results page: ');
+            for(var key in rooms[roomCode].clientState) {
+                rooms[roomCode].clientState[key] = 0;
+            }
+
             try {
               const rawRestoData = [];
               const promises = [];
@@ -152,8 +158,9 @@ io.on("connection", (socket) => {
               
               await Promise.all(promises);
               rooms[roomCode].restoData = rawRestoData;
-              
+//BREAKPOINT1->
               if (rawRestoData.length > 0) {
+                rooms[roomCode].restoVotes = Array(rawRestoData.length).fill(0)
                 io.to(roomCode).emit("restoQuery", rawRestoData);
               } else {
                 // Fallback if no restaurants found
@@ -169,16 +176,14 @@ io.on("connection", (socket) => {
     socket.on("submitVote", (clientID, roomCode, restoNum) => {
         rooms[roomCode].clientState[clientID] = 1;
 
-        console.log('vote submitted by ', clientID);
+        console.log('vote submitted by ', clientID, ' for restaurant ', restoNum);
         console.log('current client state obj: ', rooms[roomCode].clientState);
 
-        if (rooms[roomCode].restoVotes[restoNum]) {
-            rooms[roomCode].restoVotes[restoNum]++;
-        }
-        else {
-            rooms[roomCode].restoVotes[restoNum] = 1;
-        }
+//->BREAKPOINT1
 
+        rooms[roomCode].restoVotes[restoNum]++;
+        console.log("restaurant votes:")
+        console.log(rooms[roomCode].restoVotes)
 
         if (Object.values(rooms[roomCode].clientState).every(state => state === 1)) {
             console.log('all clients have submitted their votes: ', rooms[roomCode].restoVotes);
@@ -187,9 +192,8 @@ io.on("connection", (socket) => {
             }
 
             newRestos = utils.processVotes(rooms[roomCode].restoData, rooms[roomCode].restoVotes);
+            rooms[roomCode].restoVotes = Array(newRestos.length).fill(0)
             io.to(roomCode).emit("newVote", newRestos);
-            rooms[roomCode].restoVotes = [];
-
         }
 
     });

@@ -23,6 +23,8 @@ export default function HostPage() {
   const [users, setUsers] = useState([]);
   const [ready, setReady] = useState(false);
   const [restrictions, setRestrictions] = useState(Array(4).fill(false))
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [isLocationReady, setIsLocationReady] = useState(false);
   const [currentLocation, setCurrentLocation] = useState({lat: 0, lng: 0});
   const [autoLocation, setAutoLocation] = useState(true);
 
@@ -96,31 +98,45 @@ export default function HostPage() {
   }, [socket, roomCode, router]); // Add roomCode and router to the dependencies
 
   useEffect(() => {
+    setIsGettingLocation(true);
+    
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(locationSuccess, locationError);
     } else {
       setAutoLocation(false);
+      setIsGettingLocation(false);
     }
     
     function locationSuccess(position) {
       const latitude = position.coords.latitude;
       const longitude = position.coords.longitude;
       setCurrentLocation({lat: latitude, lng: longitude});
+      setIsLocationReady(true);
+      setIsGettingLocation(false);
     }
   
     function locationError() {
       console.log("Unable to retrieve your location");
       setAutoLocation(false);
+      setIsGettingLocation(false);
     }
   }, []);
 
   function notifyReady() {
-    if (currentLocation && (currentLocation.lat >= -90 &&  currentLocation.lat <= 90) && (currentLocation.lng >= -180 && currentLocation.lng <= 180)) {
+    if (!isLocationReady && autoLocation) {
+      alert("Still retrieving your location. Please wait a moment.");
+      return;
+    }
+    
+    if (currentLocation && 
+        (currentLocation.lat !== 0 || currentLocation.lng !== 0) && 
+        (currentLocation.lat >= -90 && currentLocation.lat <= 90) && 
+        (currentLocation.lng >= -180 && currentLocation.lng <= 180)) {
       console.log("notifyReady triggered with roomCode:", roomCode);
       socket.emit("readyBegin", roomCode, currentLocation, restrictions);
     }
     else {
-      alert("Please enter a valid address")
+      alert("Please enter a valid address or wait for location retrieval");
     }
   }
 
@@ -145,8 +161,19 @@ export default function HostPage() {
         </div>
       )}
       <h2>Users Joined: {users.length}</h2>
+      
       <div className='content-center justify-self-center py-4'>
-        <button onClick={notifyReady} disabled={!roomCode || ready} className="btn-wide">Ready</button>
+        {isGettingLocation && autoLocation ? (
+          <div>Retrieving your location...</div>
+        ) : (
+          <button 
+            onClick={notifyReady} 
+            disabled={!roomCode || ready || (autoLocation && !isLocationReady)} 
+            className="btn-wide"
+          >
+            Ready
+          </button>
+        )}
       </div>
 
       {!autoLocation && (
