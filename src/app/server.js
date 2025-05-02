@@ -133,6 +133,7 @@ io.on("connection", (socket) => {
 
         if (Object.values(rooms[roomCode].clientState).every(state => state === 1)) {
             console.log('all clients have loaded results page: ');
+            socket.removeAllListeners("loadedResultsPage");
             for(var key in rooms[roomCode].clientState) {
                 rooms[roomCode].clientState[key] = 0;
             }
@@ -219,7 +220,7 @@ io.on("connection", (socket) => {
         userRoom = roomsMap[userSocket];
 
         // cleanup user input if game in progress
-        if (userRoom && rooms[userRoom].roomState >= 1) {
+        if (userRoom && rooms[userRoom].roomState && rooms[userRoom].roomState >= 1) {
 
             console.log('starting user disconnect cleanup')
 

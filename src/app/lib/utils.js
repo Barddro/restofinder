@@ -66,7 +66,7 @@ function processRestoNums(numOfClients, foodTypeWantInput, foodTypeDontWantInput
     //const RestaurantTypes = {};
 
 
-    numOfRestos = (numOfClients > 6) ? Math.round(2*Math.sqrt(numOfClients)) : 4;
+    numOfRestos = (numOfClients > 6) ? Math.round(2.3*Math.sqrt(numOfClients)) : 5;
 
     const votes = getBestFoodTypeWant(foodTypeWantInput, foodTypeDontWantInput);
 

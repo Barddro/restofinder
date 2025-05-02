@@ -99,26 +99,31 @@ export default function HostPage() {
 
   useEffect(() => {
     setIsGettingLocation(true);
+    console.log("Attempting to get location...");
     
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(locationSuccess, locationError);
+      navigator.geolocation.getCurrentPosition(locationSuccessAuto, locationErrorAuto);
     } else {
       setAutoLocation(false);
       setIsGettingLocation(false);
     }
     
-    function locationSuccess(position) {
+    function locationSuccessAuto(position) {
       const latitude = position.coords.latitude;
       const longitude = position.coords.longitude;
+      console.log("Location retrieved:", latitude, longitude);
       setCurrentLocation({lat: latitude, lng: longitude});
       setIsLocationReady(true);
       setIsGettingLocation(false);
     }
   
-    function locationError() {
+    function locationErrorAuto() {
       console.log("Unable to retrieve your location");
       setAutoLocation(false);
       setIsGettingLocation(false);
+    }
+
+    function locationSuccessManual(position) {
     }
   }, []);
 
@@ -168,7 +173,7 @@ export default function HostPage() {
         ) : (
           <button 
             onClick={notifyReady} 
-            disabled={!roomCode || ready || (autoLocation && !isLocationReady)} 
+            disabled={!roomCode || ready || !isLocationReady} 
             className="btn-wide"
           >
             Ready
@@ -177,10 +182,10 @@ export default function HostPage() {
       </div>
 
       {!autoLocation && (
-        <AddressSelector coordinates={currentLocation} setCoordinates={setCurrentLocation} />
+        <AddressSelector coordinates={currentLocation} setCoordinates={setCurrentLocation} setIsLocationReady={setIsLocationReady} />
       )}
 
-      <Restrictions restrictions={restrictions} setRestrictions={setRestrictions} />
+      {/*<Restrictions restrictions={restrictions} setRestrictions={setRestrictions} />*/}
     </div>
   );
 }

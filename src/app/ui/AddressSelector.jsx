@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 
 
-const AddressSelector = ({ coordinates, setCoordinates }) => {
+const AddressSelector = ({ coordinates, setCoordinates, setIsLocationReady }) => {
   const [address, setAddress] = useState('');
   //const [coordinates, setCoordinates] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -67,6 +68,7 @@ const AddressSelector = ({ coordinates, setCoordinates }) => {
       if (data.status === 'OK' && data.results && data.results.length > 0) {
         const { lat, lng } = data.results[0].geometry.location;
         setCoordinates({ lat, lng });
+        setIsLocationReady(true);
       } else {
         throw new Error(data.status || 'Failed to geocode address');
       }
@@ -111,24 +113,15 @@ const AddressSelector = ({ coordinates, setCoordinates }) => {
         </div>
       )}
 
-      {/*
-      
-      {coordinates && (
-        <div className="p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-          <h3 className="font-bold mb-2">Coordinates:</h3>
-          <p>Latitude: {coordinates.lat}</p>
-          <p>Longitude: {coordinates.lng}</p>
-        </div>
-      )}
-      
-      <div className="mt-4 text-sm text-gray-500">
-        <p>Note: You'll need a valid Google Maps API key with the Geocoding API enabled.</p>
-      </div>
+      {
+        coordinates && <div />
+      }
 
-    */}
+      
     
     </div>
   );
 };
 
 export default AddressSelector;
+
