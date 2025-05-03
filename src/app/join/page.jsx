@@ -1,10 +1,71 @@
-import { Suspense } from "react";
-import JoinPageClient from "./JoinPageClient";
+"use client"
 
-export default function JoinPageWrapper() {
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useSocket } from "../context/SocketContext";
+import { useState, useEffect } from "react";
+
+
+export default function JoinPage() {
+  const socket = useSocket();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [isConnected, setIsConnected] = useState(false);
+  //const [joined, setJoined] = useState(false);
+  const roomCode = searchParams.get('code');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!socket) return;
+
+    setIsConnected(socket.connected);
+    console.log("(join) Client socket ID on mount:", socket.id);
+
+    socket.emit("checkRoom", roomCode, (exists) => {
+      if (!exists) {
+        setError("Room not found");
+        router.push('/')
+      }
+    });
+
+    const onBegin = () => {
+      console.log("Ready to Begin");
+      router.push(`/questionnaire?code=${roomCode}`);
+    }
+
+    const onRoomClose = () => {
+      router.push('/disconnect');
+    }
+
+    socket.on("begin", onBegin);
+    socket.on("roomClosed", onRoomClose);
+
+    return () => {
+      socket.off("begin", onBegin);
+    };
+
+  }, [socket]);
+
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <JoinPageClient />
-    </Suspense>
+    <div style={{ padding: '2rem' }}>
+
+      <div style={{ 
+        padding: '1rem', 
+        backgroundColor: '#f0f0f0', 
+        borderRadius: '0.5rem',
+        textAlign: 'center'
+      }}>
+        <h2>Connected to Room</h2>
+          <div style={{ 
+            fontSize: '2rem', 
+            fontWeight: 'bold',
+            letterSpacing: '0.25rem'
+          }}>
+            {roomCode}
+          </div>
+          <p>Waiting for Host to Start</p>
+      </div>      
+    </div>
   );
+  
 }
