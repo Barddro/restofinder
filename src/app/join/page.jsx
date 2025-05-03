@@ -2,10 +2,10 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSocket } from "../context/SocketContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 
 
-export default function JoinPage() {
+function JoinPageContent() {
   const socket = useSocket();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -68,4 +68,12 @@ export default function JoinPage() {
     </div>
   );
   
+}
+
+export default function JoinPage() {
+  return(
+    <Suspense>
+      <JoinPageContent />
+    </Suspense>
+  )
 }

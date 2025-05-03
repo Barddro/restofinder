@@ -1,14 +1,14 @@
 "use client"
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSocket } from "../context/SocketContext";
 
 
 import { join } from 'path';
 
 
-export default function DisconnectPage() {
+function DisconnectPageContent() {
   const router = useRouter();
   const socket = useSocket();
 
@@ -26,4 +26,12 @@ export default function DisconnectPage() {
       <p className='text-violet-500 text-lg'>Looks like you've been disconnected from the server.</p>
     </div>
   );
+}
+
+export default function DisconnectPage() {
+  return(
+    <Suspense>
+      <DisconnectPageContent />
+    </Suspense>
+  )
 }

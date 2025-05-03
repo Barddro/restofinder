@@ -2,7 +2,8 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSocket } from "../context/SocketContext";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
+
 
 import { join } from 'path';
 import SelectButton from '../ui/SelectButton'
@@ -11,7 +12,7 @@ import AddressSelector from '../ui/AddressSelector'
 
 
 
-export default function HostPage() {
+function HostPageContent() {
   const socket = useSocket();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -188,4 +189,12 @@ export default function HostPage() {
       {/*<Restrictions restrictions={restrictions} setRestrictions={setRestrictions} />*/}
     </div>
   );
+}
+
+export default function HostPage() {
+  return(
+    <Suspense>
+      <HostPageContent />
+    </Suspense>
+  )
 }

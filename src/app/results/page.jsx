@@ -2,11 +2,12 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSocket } from "../context/SocketContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Loader } from 'rsuite';
 import Card from "../ui/Card";
 
-export default function QuestionnairePage() {
+
+function QuestionnairePageContent() {
   const socket = useSocket();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -145,4 +146,12 @@ export default function QuestionnairePage() {
     default:
       return null;
   }
+}
+
+export default function QuestionnairePage() {
+  return(
+    <Suspense>
+      <QuestionnairePageContent />
+    </Suspense>
+  )
 }

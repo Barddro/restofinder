@@ -2,13 +2,14 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSocket } from "../context/SocketContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Slider, Loader } from 'rsuite';
 import FoodSelector from '../ui/FoodSelector';
 //import 'rsuite/Slider/styles/index.css';
 //import 'rsuite/RangeSlider/styles/index.css';
 
-export default function QuestionnairePage() {
+
+function QuestionnairePageContent() {
   const socket = useSocket();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -283,4 +284,12 @@ export default function QuestionnairePage() {
 
   // Return the rendered question
   return renderQuestion();
+}
+
+export default function QuestionnairePage() {
+  return(
+    <Suspense>
+      <QuestionnairePageContent />
+    </Suspense>
+  )
 }

@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSocket } from "./context/SocketContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 
-export default function Home() {
+function HomeContent() {
   const socket = useSocket();
   const router = useRouter();
 
@@ -112,4 +112,12 @@ export default function Home() {
       
     </div>
   );
+}
+
+export default function Home() {
+  return(
+    <Suspense>
+      <HomeContent />
+    </Suspense>
+  )
 }
