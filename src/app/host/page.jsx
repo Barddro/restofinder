@@ -1,5 +1,7 @@
 import { Suspense } from "react";
-import HostPageClient from "./HostPageClient";
+import dynamic from "next/dynamic";
+
+const HostPageClient = dynamic(() => import("./HostPageClient"), { ssr: false });
 
 export default function HostPageWrapper() {
   return (
