@@ -2,158 +2,285 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSocket } from "../context/SocketContext";
-import { useState, useEffect, Suspense } from "react";
-import { Loader } from 'rsuite';
-import Card from "../ui/Card";
+import { useState, useEffect } from "react";
+import { Slider, Loader } from 'rsuite';
+import FoodSelector from '../ui/FoodSelector';
+//import 'rsuite/Slider/styles/index.css';
+//import 'rsuite/RangeSlider/styles/index.css';
 
-// Content component that uses client hooks
-function QuestionnairePageContent() {
+export default function QuestionnairePage() {
   const socket = useSocket();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const roomCode = searchParams ? searchParams.get('code') : null;
-  const [loadedResultsPageEmitted, setLoadedResultsPageEmitted] = useState(false);
-  const [restaurants, setRestaurants] = useState([]);
-  const [roomState, setRoomState] = useState(0);
+  const roomCode = searchParams.get('code');
+
+  const labels = ['$','$$','$$$', '$$$$', '$$$$$'];
+
+  const [questionNum, setQuestionNum] = useState(0);
+  const [answer, setAnswer] = useState([]);  // Initialize as empty array instead of null
+  const [selections, setSelections] = useState([]);
+  const [priceRange, setPriceRange] = useState(0);
+  const [distance, setDistance] = useState(30);
 
   useEffect(() => {
     if (!socket) return;
+
+    const handleReadyProceed = (qNum) => {
+      setQuestionNum(qNum);
+    };
 
     const onRoomClose = () => {
       router.push('/disconnect');
     }
 
-    const startVote = (restaurants) => {
-      console.log("starting voting", restaurants);
-      setRestaurants(restaurants);
-      setRoomState(1);
-    }
-
-    const newVote = (restaurants) => {
-      console.log("new voting round", restaurants);
-      setRestaurants(restaurants); 
-      if (restaurants.length > 1) {
-        setRoomState(1);
-      } else {
-        setRoomState(3);
-      }
-    }
-
     socket.on("connect", () => {
       router.push('/disconnect');
     });
-      
-    socket.on("restoQuery", startVote);
-    socket.on("newVote", newVote);
+    socket.on("readyProceed", handleReadyProceed);
     socket.on("roomClosed", onRoomClose);
+
+    // Initialize answer based on questionNum
+    switch(questionNum) {
+      case 0:
+        setAnswer([]);
+        setSelections([]);
+        break;
+      case 1:
+        setAnswer([]);
+        setSelections([]);
+        break;
+      case 4:
+        router.push(`/results?code=${roomCode}`);
+        break;
+      default:
+        break;
+    }
     
     return () => {
-      socket.off("restoQuery", startVote);
-      socket.off("newVote", newVote);
-      socket.off("roomClosed", onRoomClose);
+      socket.off("readyProceed", handleReadyProceed);
     };
-  }, [socket, router]);
+  }, [socket, questionNum]);
 
-  useEffect(() => {
-    if (socket && roomCode && !loadedResultsPageEmitted) {
-      socket.emit("loadedResultsPage", socket.id, roomCode);
-      setLoadedResultsPageEmitted(true);
+  function submitAnswer() {
+    let finalAnswer;
+    
+    // Determine what to submit based on the question
+    switch(questionNum) {
+      case 0:
+      case 1:
+        finalAnswer = answer;
+        break;
+      case 2:
+        finalAnswer = distance;
+        break;
+      case 3:
+        finalAnswer = priceRange;
+        break;
+      default:
+        finalAnswer = null;
     }
-  }, [socket, roomCode, loadedResultsPageEmitted]);
-
-  function vote(restoNum) {
-    socket.emit("submitVote", socket.id, roomCode, restoNum);
-    setRoomState(2);
+    
+    if (finalAnswer !== null && 
+        (typeof finalAnswer !== 'object' || (Array.isArray(finalAnswer) && finalAnswer.length > 0))) {
+      console.log('answer: ', finalAnswer);
+      socket.emit("submitAnswer", socket.id, roomCode, finalAnswer);
+      setQuestionNum(-1);
+    }
+    else {
+      alert("Please enter an answer");
+    }
   }
 
-  switch (roomState) {
-    case 0: 
-      return (
-        <div className="content-center justify-self-center justify-items-center py-4">
-          <div>
-            <h1 className='text-violet-500 text-3xl'>Waiting for restaurants</h1>
+  const handleFoodSelect = (index) => (value) => {
+    // Create a new array copy to avoid mutating state directly
+    const newAnswer = [...answer];
+    const newSelections = [...selections];
+    // Update only the specific index
+    newAnswer[index] = value.value;
+    newSelections[index] = value;
+    // Set the new state
+    setAnswer(newAnswer);
+    setSelections(newSelections);
+    
+    console.log('Current answer array:', newAnswer);
+  };
+  
+  // Similar function for clearing a specific entry
+  const handleClearFood = (index) => () => {
+    const newAnswer = [...answer];
+    const newSelections = [...selections];
+
+    newAnswer[index] = null;
+    newSelections[index] = null;
+
+    setAnswer(newAnswer);
+    setSelections(newSelections);
+    
+    console.log(`Cleared food at position ${index + 1}`);
+  };
+
+  // Render based on question number
+  const renderQuestion = () => {
+    switch(questionNum) {
+      case 0: 
+        return(
+          <div className='content-center justify-self-center justify-items-center py-4'>
+            <h1 className='text-violet-500 text-xl'>List up to 3 types of food you feel for</h1>
+              <div className='py-4'>
+                <form className="flex flex-row gap-5" onSubmit={(e) => {
+                  e.preventDefault();
+                  submitAnswer();
+                }}>
+                    <div className="py-2"> 
+                    <FoodSelector 
+                      selectedValue={selections[0]}
+                      onSelectValue={handleFoodSelect(0)}
+                      onClearValue={handleClearFood(0)}
+                    />
+                    </div>
+
+                    {answer[0] && (
+                      <div className="py-2"> 
+                      <FoodSelector 
+                        selectedValue={selections[1]}
+                        onSelectValue={handleFoodSelect(1)}
+                        onClearValue={handleClearFood(1)}
+                      />
+                      </div>
+                    )}
+
+                    {(answer[0] && answer[1]) && (
+                      <div className="py-2"> 
+                      <FoodSelector 
+                        selectedValue={selections[2]}
+                        onSelectValue={handleFoodSelect(2)}
+                        onClearValue={handleClearFood(2)}
+                      />
+                      </div>
+                    )}
+                    
+                    <button type="submit" className="btn">Submit</button>
+                </form>
+              </div>
           </div>
-          <div>
-            <Loader size='lg' />
+        );
+      
+      case 1:
+        return(
+          <div className='content-center justify-self-center justify-items-center py-4'>
+            <h1 className='text-violet-500 text-xl'>One type of food you don't want</h1>
+            <div className='py-4'>
+              <form className="flex flex-row gap-5" onSubmit={(e) => {
+                e.preventDefault();
+                submitAnswer();
+              }}>
+
+                <div className="py-2">
+                <FoodSelector 
+                      selectedValue={selections[0]}
+                      onSelectValue={handleFoodSelect(0)}
+                      onClearValue={handleClearFood(0)}
+                />
+                </div>
+                <button type="submit" className="btn">Submit</button>
+              </form>
+            </div>
           </div>
-        </div>
-      );
-    case 1:
-      return (
-        <div className='py-3 content-center justify-self-center'>
-          {restaurants && restaurants.length > 0 ? (
-            restaurants.map((resto, index) => {
-              const uniqueKey = resto.place_id || `resto-${index}`;
-              
-              return (
-                <div key={uniqueKey}>
-                  <Card 
-                    cardNum={uniqueKey}
-                    name={resto.name}
-                    photo={resto.photoUrl}
-                    priceLevel={resto.price_level}
-                    rating={resto.rating}
-                    numOfRatings={resto.user_ratings_total}
-                    address={resto.vicinity}
-                    isVoting={true}
-                    vote={() => vote(resto.id)}
+        );
+      
+      case 2: 
+        return(
+          <div className='content-center justify-self-center justify-items-center py-4'>
+            <h1 className='text-violet-500 text-xl'>How far (in meters)?</h1>
+            <div className='py-4'>
+              <form className="flex flex-row gap-5" onSubmit={(e) => {
+                e.preventDefault();
+                submitAnswer();
+              }}>
+                <div className="py-2">
+                  <Slider 
+                  value={distance}
+                  onChange={setDistance}
+                  min={100} 
+                  max={20000} 
+                  step={50} 
+                  style={{ width: 400 }}
+                  tooltip
+                  renderTooltip={(value) => (value >= 1000) ? value/1000 + ' km': value + ' m'}
+                  //barClassName="custom-slider-bar"
+                  //handleClassName="custom-slider-handle"
+                  handleStyle={{
+                    backgroundColor: '#4428a1',
+                    borderRadius: 20,
+                    borderColor: '#4428a1'
+                  }}
                   />
                 </div>
-              );
-            })
-          ) : (
-            <div className="text-center py-4">
-              <p>No restaurants found</p>
+                <button type="submit" className="btn">Submit</button>
+              </form>
             </div>
-          )}
-        </div>
-      );
-    case 2:
-      return (
-        <div className="content-center justify-self-center justify-items-center py-4">
-          <div>
-            <h1 className='text-violet-500 text-3xl'>Waiting for all clients to vote</h1>
           </div>
-          <div>
-            <Loader size='lg' />
-          </div>
-        </div>
-      );
-    case 3:
-      // Assuming the first restaurant is the winner in this case
-      const winningResto = restaurants.length > 0 ? restaurants[0] : null;
-      return (
-        <div>
-          {winningResto && (
-            <Card 
-              cardNum={winningResto.place_id || winningResto.id || 'winner'}
-              name={winningResto.name}
-              photo={winningResto.photoUrl}
-              priceLevel={winningResto.price_level}
-              rating={winningResto.rating}
-              numOfRatings={winningResto.user_ratings_total}
-              address={winningResto.vicinity}
-              isVoting={false}
-            />
-          )}
-        </div>
-      );
-    default:
-      return null;
-  }
-}
+        );
+      case 3:
+        return (
+          <div className='content-center justify-self-center justify-items-center py-4'>
+            <h1 className='text-violet-500 text-xl'>Price Range?</h1>
+            <div className='py-4'>
+              <form className="flex flex-row gap-5" onSubmit={(e) => {
+                e.preventDefault();
+                submitAnswer();
+              }}>
+                <div className="py-2">
+                <Slider 
+                  value={priceRange}
+                  onChange={setPriceRange}
+                  min={0} 
+                  max={4} 
+                  step={1} 
+                  style={{ width: 400 }}
+                  graduated 
+                  progress 
+                  tooltip
+                  renderTooltip={(value) => labels[value]}
+                  //barClassName="custom-slider-bar"
+                  //handleClassName="custom-slider-handle"
 
-// Main export component with Suspense boundary
-export default function QuestionnairePage() {
-  return (
-    <Suspense fallback={
-      <div className="content-center justify-self-center py-4">
-        <Loader size="lg" />
-        <div className="text-center mt-4">Loading questionnaire...</div>
-      </div>
-    }>
-      <QuestionnairePageContent />
-    </Suspense>
-  );
+                  handleStyle={{
+                    backgroundColor: '#4428a1',
+                    borderRadius: 20,
+                    borderColor: '#4428a1'
+                  }}
+                  />
+                </div>
+                <button type="submit" className="btn">Submit</button>
+              </form>
+            </div>
+          </div>
+        )
+      case 4:
+        return(
+          <div>
+          </div>
+        );
+      
+      case -1:
+        return(
+          <div className="content-center justify-self-center justify-items-center py-4">
+            <div>
+              <h1 className='text-violet-500 text-3xl'>Waiting for all clients to submit</h1>
+            </div>
+            <div>
+              <Loader size='lg' />
+            </div>
+          </div>
+        );
+      
+      default:
+        return <div>Unknown question number</div>;
+    }
+  };
+
+  // Return the rendered question
+  return renderQuestion();
 }
