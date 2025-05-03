@@ -11,7 +11,7 @@ import AddressSelector from '../ui/AddressSelector'
 
 
 
-export default function HostPage() {
+function HostPageContent() {
   const socket = useSocket();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -187,5 +187,18 @@ export default function HostPage() {
 
       {/*<Restrictions restrictions={restrictions} setRestrictions={setRestrictions} />*/}
     </div>
+  );
+}
+
+export default function HostPage() {
+  return (
+    <Suspense fallback={
+      <div className="content-center justify-self-center py-4">
+        <Loader size="lg" />
+        <div className="text-center mt-4">Loading questionnaire...</div>
+      </div>
+    }>
+      <HostPageContent />
+    </Suspense>
   );
 }

@@ -5,7 +5,7 @@ import { useSocket } from "../context/SocketContext";
 import { useState, useEffect } from "react";
 
 
-export default function JoinPage() {
+function JoinPageContent() {
   const socket = useSocket();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -68,4 +68,17 @@ export default function JoinPage() {
     </div>
   );
   
+}
+
+export default function JoinPage() {
+  return (
+    <Suspense fallback={
+      <div className="content-center justify-self-center py-4">
+        <Loader size="lg" />
+        <div className="text-center mt-4">Loading questionnaire...</div>
+      </div>
+    }>
+      <JoinPageContent />
+    </Suspense>
+  );
 }

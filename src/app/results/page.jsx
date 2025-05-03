@@ -1,148 +1,193 @@
 "use client"
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useSocket } from "../context/SocketContext";
-import { useState, useEffect } from "react";
-import { Loader } from 'rsuite';
-import Card from "../ui/Card";
+import { useState, useEffect, useRef, Suspense } from "react";
+import SelectButton from '../ui/SelectButton';
+import Restrictions from '../ui/Restrictions';
+import AddressSelector from '../ui/AddressSelector';
 
-export default function QuestionnairePage() {
+// Content component that uses client hooks
+function HostPageContent() {
   const socket = useSocket();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const roomCreationAttempted = useRef(false);
 
-  const roomCode = searchParams.get('code');
-  const [loadedResultsPageEmitted, setLoadedResultsPageEmitted] = useState(false);
-  const [restaurants, setRestaurants] = useState([]);
-  const [roomState, setRoomState] = useState(0);
+  const [isConnected, setIsConnected] = useState(false);
+  const [roomCode, setRoomCode] = useState("");
+  const [users, setUsers] = useState([]);
+  const [ready, setReady] = useState(false);
+  const [restrictions, setRestrictions] = useState(Array(4).fill(false));
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [isLocationReady, setIsLocationReady] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState({lat: 0, lng: 0});
+  const [autoLocation, setAutoLocation] = useState(true);
 
   useEffect(() => {
     if (!socket) return;
-
-    const onRoomClose = () => {
-      router.push('/disconnect');
-    }
-
-    const startVote = (restaurants) => {
-      console.log("starting voting", restaurants);
-      setRestaurants(restaurants);
-      setRoomState(1);
-    }
-
-    const newVote = (restaurants) => {
-      console.log("new voting round", restaurants);
-      setRestaurants(restaurants); 
-      if (restaurants.length > 1) {
-        setRoomState(1);
-      } else {
-        setRoomState(3);
+  
+    setIsConnected(socket.connected);
+    console.log("(host) Client socket ID on mount:", socket.id);
+  
+    const onConnect = () => {
+      if (!roomCode && !roomCreationAttempted.current) {
+        console.log("creating room on connect");
+        socket.emit("createRoom");
+        roomCreationAttempted.current = true;
+        console.log("(host) Client socket ID on connect:", socket.id);
       }
-    }
-
-    socket.on("connect", () => {
-      router.push('/disconnect');
-    });
-      
-    socket.on("restoQuery", startVote);
-    socket.on("newVote", newVote);
-    socket.on("roomClosed", onRoomClose);
-    
-    return () => {
-      socket.off("restoQuery", startVote);
-      socket.off("newVote", newVote);
-      socket.off("roomClosed", onRoomClose);
     };
-  }, [socket, router]);
+    
+    const onDisconnect = () => {
+      setIsConnected(false);
+    };
+  
+    const onRoomCreated = (roomCode) => {
+      console.log("Room created with code:", roomCode);
+      setRoomCode(roomCode);
+    };
+  
+    const onUserJoined = (userId) => {
+      console.log("User joined:", userId);
+      setUsers(prev => [...prev, userId]);
+    };
+    
+    const onUserLeft = (userId) => {
+      console.log("User left:", userId);
+      setUsers(prev => prev.filter(id => id !== userId));
+    };
+  
+    const onBegin = () => {
+      console.log("Ready to Begin with room code:", roomCode);
+      if (roomCode) {
+        router.push(`/questionnaire?code=${roomCode}`);
+      } else {
+        console.error("Room code is missing when trying to begin!");
+      }
+    };
+  
+    if (socket.connected && !roomCode && !roomCreationAttempted.current) {
+      console.log("creating room immediately")
+      socket.emit("createRoom");
+      roomCreationAttempted.current = true;
+    }
+  
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("roomCreated", onRoomCreated);
+    socket.on("userJoined", onUserJoined);
+    socket.on("userLeft", onUserLeft);
+    socket.on("begin", onBegin);
+  
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("roomCreated", onRoomCreated);
+      socket.off("userJoined", onUserJoined);
+      socket.off("userLeft", onUserLeft);
+      socket.off("begin", onBegin);
+    };
+  
+  }, [socket, roomCode, router]);
 
   useEffect(() => {
-    if (socket && roomCode && !loadedResultsPageEmitted) {
-      socket.emit("loadedResultsPage", socket.id, roomCode);
-      setLoadedResultsPageEmitted(true);
+    setIsGettingLocation(true);
+    console.log("Attempting to get location...");
+    
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(locationSuccessAuto, locationErrorAuto);
+    } else {
+      setAutoLocation(false);
+      setIsGettingLocation(false);
+    }
+    
+    function locationSuccessAuto(position) {
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+      console.log("Location retrieved:", latitude, longitude);
+      setCurrentLocation({lat: latitude, lng: longitude});
+      setIsLocationReady(true);
+      setIsGettingLocation(false);
+    }
+  
+    function locationErrorAuto() {
+      console.log("Unable to retrieve your location");
+      setAutoLocation(false);
+      setIsGettingLocation(false);
     }
   }, []);
-  //socket, roomCode, loadedResultsPageEmitted (dependency array)
 
-  function vote(restoNum) {
-    socket.emit("submitVote", socket.id, roomCode, restoNum);
-    setRoomState(2);
+  function notifyReady() {
+    if (!isLocationReady && autoLocation) {
+      alert("Still retrieving your location. Please wait a moment.");
+      return;
+    }
+    
+    if (currentLocation && 
+        (currentLocation.lat !== 0 || currentLocation.lng !== 0) && 
+        (currentLocation.lat >= -90 && currentLocation.lat <= 90) && 
+        (currentLocation.lng >= -180 && currentLocation.lng <= 180)) {
+      console.log("notifyReady triggered with roomCode:", roomCode);
+      socket.emit("readyBegin", roomCode, currentLocation, restrictions);
+    }
+    else {
+      alert("Please enter a valid address or wait for location retrieval");
+    }
   }
 
-  switch (roomState) {
-    case 0: 
-      return (
-        <div className="content-center justify-self-center justify-items-center py-4">
-          <div>
-            <h1 className='text-violet-500 text-3xl'>Waiting for restaurants</h1>
-          </div>
-          <div>
-            <Loader size='lg' />
-          </div>
+  return (
+    <div style={{ padding: '2rem' }}>      
+      {roomCode && (
+        <div style={{ 
+          padding: '1rem', 
+          backgroundColor: '#f0f0f0', 
+          borderRadius: '0.5rem',
+          textAlign: 'center'
+        }}>
+          <h2>Room Code</h2>
+            <div style={{ 
+              fontSize: '2rem', 
+              fontWeight: 'bold',
+              letterSpacing: '0.25rem'
+            }}>
+              {roomCode}
+            </div>
+            <p>Share this code with others to join your session</p>
         </div>
-      );
-      case 1:
-        return (
-          <div className='py-3 content-center justify-self-center'>
-            {restaurants && restaurants.length > 0 ? (
-              restaurants.map((resto, index) => {
-                const uniqueKey = resto.place_id;
-                
-                return (
-                  <div key={uniqueKey}>
-                    <Card 
-                      cardNum={uniqueKey}
-                      name={resto.name}
-                      photo={resto.photoUrl}
-                      priceLevel={resto.price_level}
-                      rating={resto.rating}
-                      numOfRatings={resto.user_ratings_total}
-                      address={resto.vicinity}
-                      isVoting={true}
-                      //onVote={() => vote(uniqueKey)}
-                      vote={() => vote(resto.id)}
-                    />
-                  </div>
-                );
-              })
-            ) : (
-              <div className="text-center py-4">
-                <p>No restaurants found</p>
-              </div>
-            )}
-          </div>
-        );
-    case 2:
-      return (
-        <div className="content-center justify-self-center justify-items-center py-4">
-          <div>
-            <h1 className='text-violet-500 text-3xl'>Waiting for all clients to vote</h1>
-          </div>
-          <div>
-            <Loader size='lg' />
-          </div>
-        </div>
-      );
-    case 3:
-      // Assuming the first restaurant is the winner in this case
-      const winningResto = restaurants[0];
-      return (
-        <div>
-          {winningResto && (
-            <Card 
-              cardNum={winningResto.place_id || winningResto.id}
-              name={winningResto.name}
-              photo={winningResto.photoUrl}
-              priceLevel={winningResto.price_level}
-              rating={winningResto.rating}
-              numOfRatings={winningResto.user_ratings_total}
-              address={winningResto.vicinity}
-              isVoting={false}
-            />
-          )}
+      )}
+      <h2>Users Joined: {users.length}</h2>
+      
+      <div className='content-center justify-self-center py-4'>
+        {isGettingLocation && autoLocation ? (
+          <div>Retrieving your location...</div>
+        ) : (
+          <button 
+            onClick={notifyReady} 
+            disabled={!roomCode || ready || !isLocationReady} 
+            className="btn-wide"
+          >
+            Ready
+          </button>
+        )}
+      </div>
 
+      {!autoLocation && (
+        <AddressSelector coordinates={currentLocation} setCoordinates={setCurrentLocation} setIsLocationReady={setIsLocationReady} />
+      )}
 
-        </div>
-      );
-    default:
-      return null;
-  }
+      {/* Commented out Restrictions component */}
+      {/*<Restrictions restrictions={restrictions} setRestrictions={setRestrictions} />*/}
+    </div>
+  );
+}
+
+// Main export component with Suspense boundary
+export default function HostPage() {
+  return (
+    <Suspense fallback={<div>Loading host page...</div>}>
+      <HostPageContent />
+    </Suspense>
+  );
 }

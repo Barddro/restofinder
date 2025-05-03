@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useSocket } from "./context/SocketContext";
 import { useState, useEffect } from "react";
 
-export default function Home() {
+function HomeContent() {
   const socket = useSocket();
   const router = useRouter();
 
@@ -111,5 +111,18 @@ export default function Home() {
       </div>
       
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="content-center justify-self-center py-4">
+        <Loader size="lg" />
+        <div className="text-center mt-4">Loading questionnaire...</div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }
