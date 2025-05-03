@@ -1,33 +1,27 @@
 "use client"
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useSocket } from "../context/SocketContext";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { Loader } from '../ui/Loader'; // Make sure you have this component or replace with your loading component
+import AddressSelector from '../ui/AddressSelector';
 
-import { join } from 'path';
-import SelectButton from '../ui/SelectButton'
-import Restrictions from '../ui/Restrictions'
-import AddressSelector from '../ui/AddressSelector'
-
-
-
-function HostPageContent() {
+// This component uses client-side hooks and is properly wrapped in Suspense in the parent
+function HostPageContentInner() {
   const socket = useSocket();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const roomCreationAttempted = useRef(false);
-
 
   const [isConnected, setIsConnected] = useState(false);
   const [roomCode, setRoomCode] = useState("");
   const [users, setUsers] = useState([]);
   const [ready, setReady] = useState(false);
-  const [restrictions, setRestrictions] = useState(Array(4).fill(false))
+  const [restrictions, setRestrictions] = useState(Array(4).fill(false));
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [isLocationReady, setIsLocationReady] = useState(false);
   const [currentLocation, setCurrentLocation] = useState({lat: 0, lng: 0});
   const [autoLocation, setAutoLocation] = useState(true);
-
 
   useEffect(() => {
     if (!socket) return;
@@ -63,7 +57,6 @@ function HostPageContent() {
       setUsers(prev => prev.filter(id => id !== userId));
     };
   
-    // Define the onBegin function to use the current roomCode value from the closure
     const onBegin = () => {
       console.log("Ready to Begin with room code:", roomCode);
       if (roomCode) {
@@ -84,7 +77,7 @@ function HostPageContent() {
     socket.on("roomCreated", onRoomCreated);
     socket.on("userJoined", onUserJoined);
     socket.on("userLeft", onUserLeft);
-    socket.on("begin", onBegin); // Don't call the function here, just pass the reference
+    socket.on("begin", onBegin);
   
     return () => {
       socket.off("connect", onConnect);
@@ -92,16 +85,16 @@ function HostPageContent() {
       socket.off("roomCreated", onRoomCreated);
       socket.off("userJoined", onUserJoined);
       socket.off("userLeft", onUserLeft);
-      socket.off("begin", onBegin); // Clean up the begin event listener
+      socket.off("begin", onBegin);
     };
   
-  }, [socket, roomCode, router]); // Add roomCode and router to the dependencies
+  }, [socket, roomCode, router]);
 
   useEffect(() => {
     setIsGettingLocation(true);
     console.log("Attempting to get location...");
     
-    if (navigator.geolocation) {
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(locationSuccessAuto, locationErrorAuto);
     } else {
       setAutoLocation(false);
@@ -121,9 +114,6 @@ function HostPageContent() {
       console.log("Unable to retrieve your location");
       setAutoLocation(false);
       setIsGettingLocation(false);
-    }
-
-    function locationSuccessManual(position) {
     }
   }, []);
 
@@ -184,18 +174,31 @@ function HostPageContent() {
       {!autoLocation && (
         <AddressSelector coordinates={currentLocation} setCoordinates={setCurrentLocation} setIsLocationReady={setIsLocationReady} />
       )}
-
-      {/*<Restrictions restrictions={restrictions} setRestrictions={setRestrictions} />*/}
     </div>
   );
 }
 
+// This wraps the content in a client-side component
+function HostPageContent() {
+  return (
+    <Suspense fallback={
+      <div className="content-center justify-self-center py-4">
+        <Loader size="lg" />
+        <div className="text-center mt-4">Loading host page...</div>
+      </div>
+    }>
+      <HostPageContentInner />
+    </Suspense>
+  );
+}
+
+// Main export that properly uses Suspense
 export default function HostPage() {
   return (
     <Suspense fallback={
       <div className="content-center justify-self-center py-4">
         <Loader size="lg" />
-        <div className="text-center mt-4">Loading questionnaire...</div>
+        <div className="text-center mt-4">Loading...</div>
       </div>
     }>
       <HostPageContent />
