@@ -40,7 +40,8 @@ const AddressSelector = ({ coordinates, setCoordinates, setIsLocationReady }) =>
   };
   
   // Replace with your actual Google Maps API key
-  const API_KEY = 'AIzaSyCn5q1Ds8lyBFtzexmxgvFJL-OagAi3t3c';
+  // CHANGE TO ENV
+  const API_KEY = process.env.GOOGLE_API_KEY
   
   const handleAddressChange = (e) => {
     setAddress(e.target.value);

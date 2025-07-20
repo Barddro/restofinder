@@ -9,8 +9,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    //const newSocket = io("http://localhost:4000"); // Connect to local Socket.IO server
-    const newSocket = io("https://restofinder-backend-production.up.railway.app", {
+    //const newSocket = io("https://restofinder-backend-production.up.railway.app", {
+    const newSocket = io(process.env.NEXT_PUBLIC_BACKEND_URL, {
       transports: ["websocket", "polling"],  // Try both transport methods
       reconnectionAttempts: 5
     });
