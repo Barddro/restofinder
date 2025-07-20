@@ -1,8 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Loader } from 'rsuite';
+
 
 const Card = ({name, photo, priceLevel, rating, numOfRatings, address, vote, cardNum, isVoting}) => {
     console.log("photo: ", photo);
-    
+
+    const [isLoaded, setIsLoaded] = useState(false); 
+    const [imgLoadError, setImgLoadError] = useState(false); 
     const pricearr = ['$','$$','$$$','$$$$', '$$$$$']
     const ratingarr = ['☆☆☆☆☆','★☆☆☆☆','★★☆☆☆','★★★☆☆','★★★★☆', '★★★★★']
 
@@ -22,13 +26,47 @@ const Card = ({name, photo, priceLevel, rating, numOfRatings, address, vote, car
     }
     */
 
+    const loadImage = (src) => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.src = src;
+            img.onload = resolve;
+            img.onerror = reject;
+        });
+    };
+
+    useEffect(() => {
+        if (photo) {
+        loadImage(photo)
+            .then(() => {
+            setIsLoaded(true);
+            })
+            .catch((err) => {
+            console.error("Image failed to load:", photo, err);
+            setImageError(true);
+            });
+        }
+    }, [photo]);
+
     return(
         <div>
             <div className='py-5 px-5 rounded-2xl border-2 border-gray-300 shadow w-fit'>
                 <p className='text-2xl font-bold'>{name}</p>
-                <div className='py-2 px-2'>
-                    <img src={photo} className='object-cover w-xl h-auto rounded-lg'></img>
-                </div>
+
+                {!isLoaded && !imgLoadError && 
+                    <div className='py-2 px-2 w-72 h-60 flex items-center justify-center relative'>
+                        <Loader size='md' />
+                    </div>
+                }
+                    
+                    {isLoaded && !imgLoadError && <img
+                        src={photo}
+                        alt={name}
+                        className='object-cover w-xl h-auto rounded-lg'
+                        />
+                    }
+                    {imgLoadError && <div className='background-gray-200 w-xl h-auto rounded-lg flex items-center justify-center' />}
+
 
                 <div className='flex-auto'>
                     <p className='text-lg font-bold'></p>
